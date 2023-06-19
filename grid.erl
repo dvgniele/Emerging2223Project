@@ -1,5 +1,5 @@
 -module(grid).
--export([create_grid/2, get_cell/3, set_cell/4]).
+-export([create_grid/2, get_cell/3, set_cell/4, update_position/6]).
 
 % initialize a grid R * C
 create_grid(R, C) ->
@@ -28,3 +28,31 @@ get_cell(Grid, Row, Col) ->
 % Set the value of a cell at the specified row and column
 set_cell(Grid, Row, Col, Value) ->
     maps:put({Row, Col}, Value, Grid).
+
+% (X, Y) -> [{PID, isFree}]
+
+remove_old_position(Grid, Row, Col, {Pid, _ }, R, C) ->
+    SearchUpList = get_cell(Grid, Row, (Col - 1) rem C),
+    SearchUp = lists:filter(fun({Current_PID, _}) -> Current_PID =/= Pid end, SearchUpList),
+    set_cell(Grid, Row, (Col - 1) rem C, SearchUp),
+    SearchDownList = get_cell(Grid, Row, (Col + 1) rem C ),
+    SearchDown = lists:filter(fun({Current_PID, _}) -> Current_PID =/= Pid end, SearchDownList),
+    set_cell(Grid, Row, (Col + 1) rem C, SearchDown),
+    SearchLeftList = get_cell(Grid, (Row - 1) rem R, Col ),
+    SearchLeft = lists:filter(fun({Current_PID, _}) -> Current_PID =/= Pid end, SearchLeftList),
+    set_cell(Grid, (Row - 1) rem R, Col, SearchLeft),
+    SearchRightList = get_cell(Grid, (Row + 1) rem R, Col ),
+    SearchRight = lists:filter(fun({Current_PID, _}) -> Current_PID =/= Pid end, SearchRightList),
+    set_cell(Grid, (Row + 1) rem R, Col, SearchRight),
+    SearchCurrentList = get_cell(Grid, Row, Col ),
+    SearchCurrent = lists:filter(fun({Current_PID, _}) -> Current_PID =/= Pid end, SearchCurrentList),
+    set_cell(Grid, Row, Col, SearchCurrent),
+    Grid.
+
+update_position(Grid, Row, Col, { Pid, IsFree }, R, C) ->
+    GridWithoutOldPid = remove_old_position(Grid, Row, Col, { Pid, IsFree }, R, C),
+    OldItemsWithoutPid = get_cell(grid, Row, Col),
+    NewItems = [ {  Pid, IsFree } ],
+    UnionList = lists:uunion(OldItemsWithoutPid, NewItems),
+    NewGrid = set_cell(GridWithoutOldPid, Row, Col, UnionList),
+    NewGrid.
