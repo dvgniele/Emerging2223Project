@@ -1,6 +1,5 @@
 -module(car).
 -import(grid, [create_grid/2, get_cell/3]).
--import(lists, [hd/1, delete/2, uunion/2]).
 -export([main/4, friendship/2, detect/4, state/2]).
 
 main(X, Y, W, H) -> 
@@ -66,7 +65,7 @@ add_friendship(StatePid, FRIENDLIST, PIDLIST) ->
 % funzione di supporto per richiedere amicizia ad amici di amici
 ask_mutual_friend(StatePid, FRIENDLIST, NewFriends) -> 
     io:format("##    Car -> ask_mutual_friend/3    ##\n"),
-    {PID1, PID2} = lists:hd(FRIENDLIST),
+    {PID1, PID2} = hd(FRIENDLIST),
 
     Ref = make_ref(),
 
@@ -77,7 +76,7 @@ ask_mutual_friend(StatePid, FRIENDLIST, NewFriends) ->
             add_friendship(StatePid, FRIENDLIST, PIDLIST)
     end,
 
-    CombinedList = lists:uunion(FRIENDLIST, PIDLIST),
+    CombinedList = lists:usort(FRIENDLIST ++ PIDLIST),
     EditList = lists:delete({self(), StatePid}, CombinedList),
     EditList.
 
@@ -86,12 +85,12 @@ get_friend(StatePid, PIDLIST, NewFriends) ->
     io:format("##    Car -> get_friend/3    ##\n"),
     case length(PIDLIST) > 0 of
         true ->
-            {NewFriendFriendship, NewFriendState} = lists:hd(PIDLIST),
+            {NewFriendFriendship, NewFriendState} = hd(PIDLIST),
             case ({NewFriendFriendship, NewFriendState} =:= {self(), StatePid}) of
                 true ->
                     get_friend(StatePid, lists:delete({self(), StatePid}, PIDLIST), NewFriends);
                 false ->
-                    {lists:uunion(NewFriends, [{NewFriendFriendship, NewFriendState}]), PIDLIST}
+                    {lists:usort(NewFriends ++ [{NewFriendFriendship, NewFriendState}]), PIDLIST}
             end;
         false -> 
             {NewFriends, PIDLIST}
