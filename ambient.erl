@@ -1,18 +1,17 @@
 -module(ambient).
 -import(grid, [create_grid/2, get_cell/3, set_cell/4, update_position/6]).
--export([init_world/0]).
+-export([init_world/2]).
 
-init_world() ->
+init_world(W, H) when W > 0 , H > 0->
     register(ambient, self()),
     io:format("Ambient created with PID -> ~p\n", [self()]),
-    W = 50,
-    H = 50,
     Grid = create_grid(W, H),
     process_flag(trap_exit, true),
     world_listener(Grid, W, H)
     .
 
 world_listener(Grid, W, H) ->
+    io:format("##    ambient -> world_listener/1    ##\n"),
         receive         
         
         {isFree, PID, X, Y, Ref} ->

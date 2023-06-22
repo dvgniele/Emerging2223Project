@@ -1,12 +1,13 @@
 -module(wellknown).
--export().
+-export([wellknown/0]).
 
 wellknown() ->
-    register(wellknown, self())
-    io:format("##    Wellknown: actor registered as 'wellknown' with pid ~p    ##\n", [self()])
-    wellknown([])
+    register(wellknown, self()),
+    io:format("##    Wellknown: actor registered as 'wellknown' with pid ~p    ##\n", [self()]),
+    wellknown([]).
 
 wellknown(PIDLIST) -> 
+    io:format("##    wellknown -> wellknown/1    ##\n"),
     receive
         {getFriends, PID1, PID2, Ref} ->
             % invio della lista di amici al processo di friendship che ha effettuato la richiesta
@@ -22,5 +23,5 @@ wellknown(PIDLIST) ->
                     % viene aggiunto successivamente alla restituzione della lista di friendship "myFriends"
                     % dato che non ha senso avere se stessi nella lista di amici
                     wellknown([{PID1, PID2} | PIDLIST])
-            end;
+            end
     end.

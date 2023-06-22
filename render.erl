@@ -3,11 +3,13 @@
 -export([render/2, render_loop/0]).
 
 render_loop() ->
+    io:format("##    render -> render_loop/0    ##\n"),
     sleep(1000),
     render ! {draw},
     render_loop().
 
 render(W, H) ->
+    io:format("##    render -> render/2    ##\n"),
     register(render, self()),
     io:format("##    Render: actor registered as 'render' with pid ~p    ##\n", [self()]),
     spawn_link(?MODULE, render_loop, []),
@@ -15,6 +17,7 @@ render(W, H) ->
     render(Grid, W, H).
 
 render(Grid, W, H) ->
+    io:format("##    render -> render/3    ##\n"),
     % ogni cella mantine la lista delle automobili che sono su di essa (X, Y) -> [{PID, isFree}]
     receive
         % update the position of the car
@@ -48,12 +51,14 @@ render(Grid, W, H) ->
 
 % print the current row
 draw(Grid, W, H, PosX, PosY) when PosY + 1 < H -> 
+    io:format("##    render -> draw/5    ##\n"),
     CarsList = get_cell(Grid, PosX, PosY),
     io:format("(~p  ~p) -> ~p\n", [PosX, PosY, length(CarsList)]),
     draw(Grid, W, H, PosX, PosY + 1);
 
 % increase the row and start to printing again from column 0
 draw(Grid, W, H, PosX, PosY) when PosX + 1 < W, PosY + 1 == H -> 
+    io:format("##    render -> draw/5 (2)   ##\n"),
    draw(Grid, W, H, PosX + 1, 0);
 
 draw(_, W, H, PosX, PosY) when PosX + 1 == W, PosY + 1 == H -> 
