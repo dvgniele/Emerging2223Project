@@ -9,4 +9,4 @@ erlc -o . wellknown.erl
 
 PAUSE
 
-erl -sname eep -s main init
+erl -sname eep -s main init -noshell
