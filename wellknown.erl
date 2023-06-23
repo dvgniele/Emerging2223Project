@@ -7,7 +7,7 @@ wellknown() ->
     wellknown([]).
 
 wellknown(PIDLIST) -> 
-    io:format("##    wellknown -> wellknown/1    ##\n"),
+    %io:format("##    wellknown -> wellknown/1    ##\n"),
     receive
         {getFriends, PID1, PID2, Ref} ->
             % invio della lista di amici al processo di friendship che ha effettuato la richiesta

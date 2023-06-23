@@ -25,7 +25,7 @@ create_cars(NCars, CarsPids, W, H, SleepInterval, NCarsToPurge) when NCars > 0 -
 
 
 create_cars(NCars, CarsPids, W, H, SleepInterval, NCarsToPurge) when NCars =:= 0 ->
-    io:format("##    Main -> Create_cars/6    ##\n"),
+    %io:format("##    Main -> Create_cars/6    ##\n"),
     io:format("Cars List: ~p\n", [CarsPids]),
     sleep(SleepInterval),
     cars_purge().

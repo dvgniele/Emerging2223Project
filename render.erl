@@ -9,7 +9,7 @@ render_loop() ->
     render_loop().
 
 render(W, H) ->
-    io:format("##    render -> render/2    ##\n"),
+    %io:format("##    render -> render/2    ##\n"),
     register(render, self()),
     io:format("##    Render: actor registered as 'render' with pid ~p    ##\n", [self()]),
     spawn_link(?MODULE, render_loop, []),
@@ -17,7 +17,7 @@ render(W, H) ->
     render(Grid, W, H).
 
 render(Grid, W, H) ->
-    io:format("##    render -> render/3    ##\n"),
+    %io:format("##    render -> render/3    ##\n"),
     % ogni cella mantine la lista delle automobili che sono su di essa (X, Y) -> [{PID, isFree}]
     receive
         % update the position of the car
