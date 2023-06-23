@@ -3,7 +3,6 @@
 -export([main/4, friendship/2, detect/4, state/2]).
 
 main(X, Y, W, H) -> 
-    io:format("##    Car -> main/4    ##\n"),
     io:format("## Car -> Starting ##\n"),
     link(whereis(ambient)),
     Pid_state = spawn_link(?MODULE, state, [{X, Y}, {W, H}]),
@@ -13,7 +12,6 @@ main(X, Y, W, H) ->
     main(whereis(ambient), W, H).
 
 main(AmbientPid, W, H) ->
-    io:format("##    Car -> main/3    ##\n"),
     receive
         {'EXIT', AmbientPid, Reason} -> 
             io:format("Ambient is dead. Reason: ~p. Car ~p is killing itself\n", [Reason, self()]),
@@ -26,7 +24,7 @@ main(AmbientPid, W, H) ->
     end.
 
 friendship(StatePid, FRIENDLIST) when FRIENDLIST =:= [] -> 
-    io:format("##    Car -> friendship/2    ##\n"),
+    %io:format("##    Car -> friendship/2    ##\n"),
     link(StatePid),
     Ref = make_ref(),
     % invia a StatePID il PID della friendship
@@ -39,7 +37,7 @@ friendship(StatePid, FRIENDLIST) when FRIENDLIST =:= [] ->
     end.
 
 add_friendship(StatePid, FRIENDLIST, PIDLIST) ->
-    io:format("##    Car -> add_friendship/3    ##\n"),
+    %io:format("##    Car -> add_friendship/3    ##\n"),
     case length(FRIENDLIST) < 5 of
         % add degli amici
         true ->
@@ -64,7 +62,7 @@ add_friendship(StatePid, FRIENDLIST, PIDLIST) ->
 
 % funzione di supporto per richiedere amicizia ad amici di amici
 ask_mutual_friend(StatePid, FRIENDLIST, NewFriends) -> 
-    io:format("##    Car -> ask_mutual_friend/3    ##\n"),
+    %io:format("##    Car -> ask_mutual_friend/3    ##\n"),
     {PID1, PID2} = hd(FRIENDLIST),
 
     Ref = make_ref(),
@@ -82,7 +80,7 @@ ask_mutual_friend(StatePid, FRIENDLIST, NewFriends) ->
 
 
 get_friend(StatePid, PIDLIST, NewFriends) -> 
-    io:format("##    Car -> get_friend/3    ##\n"),
+    %io:format("##    Car -> get_friend/3    ##\n"),
     case length(PIDLIST) > 0 of
         true ->
             {NewFriendFriendship, NewFriendState} = hd(PIDLIST),
@@ -130,46 +128,30 @@ detect(StatePid, W, H, TargetX, TargetY) ->
         {targetFree, IsTargetFree, IsTargetFreeRef} ->
             case IsTargetFree of
                 true ->
-                    io:format("DETECT -> RIGA 132\n")
-                    % {NewX, NewY} = move(StatePid, W, H, TargetX, TargetY),
-                    % % Aggiorno il render sulla mia nuova posizione
-                    % render ! {position, StatePid, NewX, NewY},
-                    % IsFreeRef = make_ref(),
-                    % ambient ! {isFree, self(), NewX, NewY, IsFreeRef},
-                    % receive
-                    %             %  - {status, Ref, IsFree} è la risposta da parte dell'ambiente
-                    %             % all'attore il cui PID PID era contenuto nella richiesta.
-                    %             % Il booleano IsFree vale true sse il posteggio è libero.
-                    %     {status, IsFreeRef, IsFree} ->
-                    %                 % In seguito alla ricezione del messaggio status, il messaggio viene
-                    %                 % condiviso con l'attore "state" tramite un protocollo privato.
-                    %         StatePid ! {status, {NewX, NewY}, IsFree},
-                    %                 % Nel caso in cui sia stato raggiunto il posteggio obiettivo e questo sia libero:
-                    %                 %  - {park, PID, X, Y, Ref} viene invato all'attore "ambient" per dire
-                    %                 %    che l'automobile sta parcheggiando. Ref è una nuova reference.
-                    %         case (NewX =:= TargetX) and (NewY =:= TargetY) of
-                    %             true ->
-                    %                 case IsFree of 
-                    %                     true ->
-                    %                         ParkRef = make_ref(),
-                    %                         ambient ! {park, StatePid, NewX, NewY, ParkRef},
-                    %                                 % Notifica status che la cella è ora occupata (in modo da poterlo condividere durante il gossiping).
-                    %                         StatePid ! {status, self(), {NewX, NewY}, false},
-                    %                                 %  - {leave, PID, Ref} viene inviato dopo 1-5s (valore scelto casualmente) all'attore
-                    %                                 % "ambient" per dire che l'automobile sta lasciando il posteggio. La reference contenuta
-                    %                                 % nel messaggio deve essere identica a quella del messaggio precedente.
-                    %                         sleep(rand:uniform(5000)),
-                    %                         ambient ! {leave, StatePid, ParkRef},
-                    %                         detect(StatePid, W, H);
-                    %                     false ->
-                    %                         detect(StatePid,  W, H);
-                                            
-                    %                     false ->
-                    %                         sleep(2000),
-                    %                         detect(StatePid, W, H, TargetX, TargetY)
-                    %                 end
-                    %         end
-                    % end
+                    {NewX, NewY} = move(StatePid, W, H, TargetX, TargetY),
+                    render ! {position, StatePid, NewX, NewY},
+                    IsFreeRef = make_ref(),
+                    ambient ! {isFree, self(), NewX, NewY, IsFreeRef},
+                    receive
+                        {status, IsFreeRef, IsFree} ->
+                            StatePid ! {status, {NewX, NewY}, IsFree},
+                            case (NewX =:= TargetX) and (NewY =:= TargetY) of
+                                        true ->
+                                            case IsFree of 
+                                                true ->
+                                                    ParkRef = make_ref(),
+                                                    ambient ! {park, StatePid, NewX, NewY, ParkRef},
+                                                    StatePid ! {status, self(), {NewX, NewY}, false},
+                                                    sleep(rand:uniform(5000)),
+                                                    ambient ! {leave, StatePid, ParkRef},
+                                                    detect(StatePid, W, H);
+                                                false -> detect(StatePid,  W, H)
+                                            end;
+                                        false ->
+                                            sleep(2000),
+                                            detect(StatePid, W, H, TargetX, TargetY)
+                            end
+                    end
             end
     end.
 
@@ -204,7 +186,7 @@ moveX(X, Target_X, W) ->
         Margin_R = abs(Target_X - ((X+1) rem W)), 
         Margin_L = abs(Target_X - ((X-1) rem W)),
 
-        io:format("X: Margin_R: ~p, Margin_L: ~p~n", [Margin_R, Margin_L]),
+        %io:format("X: Margin_R: ~p, Margin_L: ~p~n", [Margin_R, Margin_L]),
 
         case Margin_R =< Margin_L of
             true -> 1;
@@ -224,7 +206,7 @@ moveY(Y, Target_Y, H) ->
         end.
 
 state({ X, Y }, { W, H } ) -> 
-    io:format("##    Starting State/2    ##\n"),
+    %io:format("##    Starting State/2    ##\n"),
     Grid = create_grid(W,H),
     receive
         {friendshipPid, PID} -> state(Grid, {X, Y}, PID)
@@ -232,7 +214,7 @@ state({ X, Y }, { W, H } ) ->
 
 %% state/3
 state(Grid, {X, Y}, FriendshipPid) ->
-    io:format("##    Starting State/3    ##\n"),
+    %io:format("##    Starting State/3    ##\n"),
     receive
         {newTarget, PID, {TargetX, TargetY}, Ref} ->
             is_target_free(PID, Ref, Grid, {X, Y}, {TargetX, TargetY}, FriendshipPid)
@@ -240,7 +222,7 @@ state(Grid, {X, Y}, FriendshipPid) ->
 
 %% state/4
 state(Grid, {X, Y}, {TargetX, TargetY}, FriendshipPid) ->
-    io:format("##    Starting State/4    ##\n"),
+    %io:format("##    Starting State/4    ##\n"),
     receive
         % Richiesta da parte di "detect" sulla posizione dell'automobile sulla scacchiera.
         {getMyPosition, PID, Ref} -> 
@@ -264,7 +246,7 @@ state(Grid, {X, Y}, {TargetX, TargetY}, FriendshipPid) ->
 
 %% status_update/6
 status_update({X, Y}, IsFree, Grid, {PosX, PosY}, {TargetX, TargetY}, FriendshipPid) ->
-    io:format("##    Car -> status_update/6    ##\n"),
+    %io:format("##    Car -> status_update/6    ##\n"),
     % Questa informazione modifica l'ambiente interno?
     NumberOfCars = get_cell(Grid, X, Y),
     ListOfParkedCar = lists:filter(fun({_, IsFreeInside}) -> IsFreeInside =/= true end, NumberOfCars),
@@ -297,7 +279,7 @@ status_update({X, Y}, IsFree, Grid, {PosX, PosY}, {TargetX, TargetY}, Friendship
 
 %% notify_friends/7
 notify_friends(FRIENDSLIST, {X, Y}, IsFree, Grid, {PosX, PosY}, {TargetX, TargetY}, FriendshipPid) ->
-    io:format("##    Car -> notify_friends/7    ##\n"),
+    %io:format("##    Car -> notify_friends/7    ##\n"),
     case length(FRIENDSLIST) > 0 of
         true ->
             lists:last(tuple_to_list(lists:last(FRIENDSLIST))) ! {notifyStatus, {X, Y}, IsFree},
@@ -309,7 +291,7 @@ notify_friends(FRIENDSLIST, {X, Y}, IsFree, Grid, {PosX, PosY}, {TargetX, Target
 
 %% is_target_free/6
 is_target_free(DetectPid, Ref, Grid, {X, Y}, {TargetX, TargetY}, FriendshipPid) ->
-    io:format("##    Car -> is_target_free/6    ##\n"),
+    %io:format("##    Car -> is_target_free/6    ##\n"),
     % Controlla se la cella è libera .
     NumberOfCars = get_cell(Grid, X, Y),
     ListOfParkedCars = lists:filter(fun({_CarId, IsFree}) -> IsFree =/= true end, NumberOfCars),
