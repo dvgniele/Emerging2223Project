@@ -27,12 +27,12 @@ increment_position(R, C, CurrentRowIndex, CurrentColumnIndex) ->
 
 % Get the value of a cell at the specified row and column
 get_cell(Grid, Row, Col) ->
-    io:format("##    Grid -> get_cell    ##\n"),
+    %io:format("##    Grid -> get_cell    ##\n"),
     maps:get({Row, Col}, Grid, []).
 
 % Set the value of a cell at the specified row and column
 set_cell(Grid, Row, Col, Value) ->
-    io:format("##    Grid -> set_cell    ##\n"),
+    %io:format("##    Grid -> set_cell    ##\n"),
     maps:put({Row, Col}, Value, Grid).
 
 % (X, Y) -> [{PID, isFree}]
@@ -59,8 +59,8 @@ remove_old_position(Grid, Row, Col, {Pid, _ }, R, C) ->
 update_position(Grid, Row, Col, { Pid, IsFree }, R, C) ->
     %io:format("##    Grid -> update_position    ##\n"),
     GridWithoutOldPid = remove_old_position(Grid, Row, Col, { Pid, IsFree }, R, C),
-    OldItemsWithoutPid = get_cell(grid, Row, Col),
+    OldItemsWithoutPid = get_cell(Grid, Row, Col),
     NewItems = [ {  Pid, IsFree } ],
-    UnionList = lists:uunion(OldItemsWithoutPid, NewItems),
+    UnionList = lists:usort(OldItemsWithoutPid ++ NewItems),
     NewGrid = set_cell(GridWithoutOldPid, Row, Col, UnionList),
     NewGrid.
