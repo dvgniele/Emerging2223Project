@@ -1,5 +1,5 @@
 -module(render).
--import(grid,[create_grid/2, update_position/6, get_cell/3]).
+-import(grid,[create_grid/2, update_position/6, get_cell/3, handle_parked/6]).
 -export([render/2, render_loop/0]).
 
 render_loop() ->
@@ -27,12 +27,12 @@ render(Grid, W, H) ->
             render(NewGrid, W, H);
         % print new target for PID car
         {target, PID, X, Y} ->
-            %io:format("Car ~p wants to park in {~p, ~p}\n", [PID, X, Y]),
+            io:format("Car ~p wants to park in {~p, ~p}\n", [PID, X, Y]),
             render(Grid, W, H);
         % update the status of the car (parked or not)
         {parked, PID, X, Y, IsParked} -> 
             monitor(process, PID),
-            NewCarsPositionsMap = update_position(Grid, X, Y, { PID, IsParked }, W, H),
+            NewCarsPositionsMap = handle_parked(Grid, X, Y, { PID, IsParked }, W, H),
             render(NewCarsPositionsMap, W, H);
         % print the new friendlist
         {friends, PID, PIDLIST} ->
@@ -43,6 +43,7 @@ render(Grid, W, H) ->
             NewGrid = maps:remove(Pid, Grid),
             render(NewGrid, W, H);
         {draw} -> 
+            io:format("\n\n~p\n\n", [Grid]),
             draw(Grid, W, H),
             render(Grid, W, H)
     end.
@@ -53,7 +54,7 @@ draw(Grid, W, H) ->
     draw(Grid, W, H, 0, 0)
     .
 
-draw(Grid, W, H, PosX, PosY) when PosY + 1 < H->
+draw(Grid, W, H, PosX, PosY) when PosY < H ->
     CurrentCars = get_cell(Grid, PosX, PosY),
     case length(CurrentCars) of
         0 -> io:format(" # ");
@@ -63,11 +64,11 @@ draw(Grid, W, H, PosX, PosY) when PosY + 1 < H->
     draw(Grid, W, H, PosX, PosY + 1);
 
 % % increase the row and start to printing again from column 0
-draw(Grid, W, H, PosX, PosY) when PosX + 1 < W, PosY + 1 == H -> 
+draw(Grid, W, H, PosX, PosY) when PosX + 1 < W, PosY == H -> 
     io:format("\n"),
     draw(Grid, W, H, PosX + 1, 0);
 
-draw(_, W, H, PosX, PosY) when PosX + 1 == W, PosY + 1 == H -> 
+draw(_, W, H, PosX, PosY) when PosX + 1 == W, PosY == H -> 
      io:format("\n\n\n Legenda: \n # -> no car \n X -> one car \n M -> many car \n", []).
 
 % % print the current row
