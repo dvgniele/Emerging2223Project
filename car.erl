@@ -1,5 +1,5 @@
 -module(car).
--import(grid, [create_grid/2, get_cell/3]).
+-import(grid, [create_grid/2, get_cell/3, check_neg/2, check_pos/2]).
 -export([main/4, friendship/2, detect/4, state/2]).
 
 main(X, Y, W, H) -> 
@@ -9,6 +9,7 @@ main(X, Y, W, H) ->
     Pid_friendship = spawn_link(?MODULE, friendship, [Pid_state, []]),
     spawn_link(?MODULE, detect, [Pid_state, Pid_friendship, W, H]),
     process_flag(trap_exit, true),
+    render ! { draw },
     main(whereis(ambient), W, H).
 
 main(AmbientPid, W, H) ->
@@ -18,8 +19,8 @@ main(AmbientPid, W, H) ->
             exit(kill);
         {'EXIT', From, Reason} -> 
             io:format("Main received exit message from ~p with reason ~p\n", [From, Reason]),
-            NewX = rand:uniform(W),
-            NewY = rand:uniform(H),
+            NewX = (rand:uniform(W) - 1),
+            NewY = (rand:uniform(H) - 1),
             main(NewX, NewY, W, H)
     end.
 
@@ -79,33 +80,38 @@ ask_mutual_friend(StatePid, FRIENDLIST, NewFriends) ->
     EditList.
 
 
-get_friend(StatePid, PIDLIST, NewFriends) -> 
-    %io:format("##    Car -> get_friend/3    ##\n"),
+get_friend(StatePid, PIDLIST, NewFriends) ->
+    % io:format("##    Car -> get_friend/3    ##\n"),
     case length(PIDLIST) > 0 of
         true ->
             {NewFriendFriendship, NewFriendState} = hd(PIDLIST),
-            case ({NewFriendFriendship, NewFriendState} =:= {self(), StatePid}) of
+            case {NewFriendFriendship, NewFriendState} =:= {self(), StatePid} of
                 true ->
                     get_friend(StatePid, lists:delete({self(), StatePid}, PIDLIST), NewFriends);
                 false ->
-                    {lists:usort(NewFriends ++ [{NewFriendFriendship, NewFriendState}]), PIDLIST}
+                    NewFriend = {NewFriendFriendship, NewFriendState},
+                    NewFriendsFiltered = remove_duplicates(NewFriends, NewFriend),
+                    {NewFriendsFiltered ++ [NewFriend], PIDLIST}
             end;
         false -> 
             {NewFriends, PIDLIST}
     end.
 
+remove_duplicates(List, Element) ->
+    lists:usort([Element | List]).
+
 %% detect/4
 detect(StatePid, FriendshipPid, W, H) ->
-    io:format("##    Car -> detect/4    ##\n"),
+    %io:format("##    Car -> detect/4    ##\n"),
     link(StatePid),
     link(FriendshipPid),
     detect(StatePid, W, H).
 
 %% detect/3
 detect(StatePid, W, H) ->
-    io:format("##    Car -> detect/3    ##\n"),
-    TargetX = rand:uniform(W),
-    TargetY = rand:uniform(H),
+    %io:format("##    Car -> detect/3    ##\n"),
+    TargetX = (rand:uniform(W) - 1),
+    TargetY = (rand:uniform(H) - 1),
     NewTargetRef = make_ref(),
     StatePid ! {newTarget, self(), {TargetX, TargetY}, NewTargetRef},
     receive
@@ -121,7 +127,7 @@ detect(StatePid, W, H) ->
 
 %% detect/5
 detect(StatePid, W, H, TargetX, TargetY) ->
-    io:format("##    Car -> detect/5    ##\n"),
+    %io:format("##    Car -> detect/5    ##\n"),
     IsTargetFreeRef = make_ref(),
     StatePid ! {isTargetFree, self(), IsTargetFreeRef},
     receive
@@ -129,6 +135,8 @@ detect(StatePid, W, H, TargetX, TargetY) ->
             case IsTargetFree of
                 true ->
                     {NewX, NewY} = move(StatePid, W, H, TargetX, TargetY),
+                    StatePid ! {updateMyPosition, {NewX, NewY}},
+                    io:format("Car: ~p --- (X ~p, Y ~p), (TX ~p, TY ~p) \n", [StatePid, NewX, NewY, TargetX, TargetY]),
                     render ! {position, StatePid, NewX, NewY},
                     IsFreeRef = make_ref(),
                     ambient ! {isFree, self(), NewX, NewY, IsFreeRef},
@@ -156,7 +164,7 @@ detect(StatePid, W, H, TargetX, TargetY) ->
     end.
 
 move(StatePid, W, H, Target_X, Target_Y) -> 
-    io:format("##    Car -> move/5    ##\n"),
+    %io:format("##    Car -> move/5    ##\n"),
     Ref = make_ref(),
     StatePid ! {getMyPosition, self(), Ref},
     receive 
@@ -166,43 +174,43 @@ move(StatePid, W, H, Target_X, Target_Y) ->
                     {X,Y};
 
                 {true,false} ->
-                    {X, (Y + moveY(Y, Target_Y, H)) rem (H)};
+                    {X, (moveY(Y, Target_Y, H) rem H)};
 
                 {false,true} ->
-                    {(X + moveX(X, Target_X, W)) rem (W), Y};
+                    {(moveX(X, Target_X, W) rem W), Y};
                 
                 {false,false} ->
                            Axis = rand:uniform(2),
                             case Axis of 
-                                1 -> {(X + moveX(X, Target_X, W)) rem (W), Y};
-                                2 -> {X, (Y + moveY(Y, Target_Y, H)) rem (H)}
+                                1 -> {(moveX(X, Target_X, W) rem W), Y};
+                                2 -> {X, (moveY(Y, Target_Y, H) rem H)}
                             end
             
             end
     end.
 
 moveX(X, Target_X, W) ->
-    io:format("##    Car -> moveX    ##\n"),
-        Margin_R = abs(Target_X - ((X+1) rem W)), 
-        Margin_L = abs(Target_X - ((X-1) rem W)),
+    %io:format("##    Car -> moveX    ##\n"),
+        Margin_R = abs(Target_X - check_pos(((X + 1) rem W), W)), 
+        Margin_L = abs(Target_X - check_neg(((X - 1) rem W), (W - 1))),
 
         %io:format("X: Margin_R: ~p, Margin_L: ~p~n", [Margin_R, Margin_L]),
 
         case Margin_R =< Margin_L of
-            true -> 1;
-            false -> -1
+            true -> check_pos(((X + 1) rem W), W);
+            false -> check_neg(((X - 1) rem W), (W - 1))
         end.
 
 moveY(Y, Target_Y, H) ->
-    io:format("##    Car -> moveY    ##\n"),
-        Margin_T = abs(Target_Y - ((Y+1) rem H)), 
-        Margin_B = abs(Target_Y - ((Y-1) rem H)),
+    %io:format("##    Car -> moveY    ##\n"),
+        Margin_T = abs(Target_Y - check_pos(((Y + 1) rem H), H)), 
+        Margin_B = abs(Target_Y - check_neg(((Y - 1) rem H), (H - 1))),
 
-        io:format("Y: Margin_T: ~p, Margin_B: ~p~n", [Margin_T, Margin_B]),
+    %    io:format("Y: Margin_T: ~p, Margin_B: ~p~n", [Margin_T, Margin_B]),
 
         case Margin_T =< Margin_B of
-            true -> 1;
-            false -> -1
+            true -> check_pos(((Y + 1) rem H), H);
+            false -> check_neg(((Y - 1) rem H), (H - 1))
         end.
 
 state({ X, Y }, { W, H } ) -> 
