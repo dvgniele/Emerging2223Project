@@ -57,9 +57,14 @@ draw(Grid, W, H) ->
 draw(Grid, W, H, PosX, PosY) when PosY < H ->
     CurrentCars = get_cell(Grid, PosX, PosY),
     case length(CurrentCars) of
-        0 -> io:format(" # ");
-        1 -> io:format(" X ");
-        _ -> io:format(" M ")
+        0 -> io:format(" #");
+        1 -> 
+            {Pid, IsFree} = hd(CurrentCars),
+            case IsFree of 
+                true -> io:format(" $");
+                false -> io:format(" X")
+            end;
+        _ -> io:format(" M")
     end,
     draw(Grid, W, H, PosX, PosY + 1);
 
@@ -69,7 +74,7 @@ draw(Grid, W, H, PosX, PosY) when PosX + 1 < W, PosY == H ->
     draw(Grid, W, H, PosX + 1, 0);
 
 draw(_, W, H, PosX, PosY) when PosX + 1 == W, PosY == H -> 
-     io:format("\n\n\n Legenda: \n # -> no car \n X -> one car \n M -> many car \n", []).
+     io:format("\n\n\n Legenda: \n # -> no car \n X -> one car \n $ -> parked car \n M -> many car \n", []).
 
 % % print the current row
 % draw(Grid, W, H, PosX, PosY) when PosY + 1 < H -> 
